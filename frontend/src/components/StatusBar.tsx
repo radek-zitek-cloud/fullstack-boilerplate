@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import axios from "axios";
 import { CheckCircle, XCircle, Server, GitBranch } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "http://localhost:8000";
 
 export default function StatusBar() {
   const [health, setHealth] = useState<{ status: string; version?: string } | null>(null);
@@ -10,11 +12,14 @@ export default function StatusBar() {
 
   const checkHealth = async () => {
     try {
-      const response = await api.get("/health");
+      const response = await axios.get(`${API_BASE_URL}/health`, {
+        timeout: 5000,
+      });
       setHealth(response.data);
       setIsOnline(true);
     } catch (error) {
       setIsOnline(false);
+      setHealth(null);
     }
     setLastChecked(new Date());
   };
