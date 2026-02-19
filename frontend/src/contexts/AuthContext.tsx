@@ -4,6 +4,9 @@ import api from "@/lib/api";
 interface User {
   id: number;
   email: string;
+  first_name?: string;
+  last_name?: string;
+  note?: string;
   is_admin: boolean;
 }
 
@@ -12,8 +15,10 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, first_name?: string, last_name?: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,14 +57,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser();
   };
 
-  const register = async (email: string, password: string) => {
-    const response = await api.post("/auth/register", { email, password });
+  const register = async (email: string, password: string, first_name?: string, last_name?: string) => {
+    const response = await api.post("/auth/register", { email, password, first_name, last_name });
     const { access_token, refresh_token } = response.data;
     
     localStorage.setItem("access_token", access_token);
     localStorage.setItem("refresh_token", refresh_token);
     
     await fetchUser();
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    const response = await api.patch("/users/me", data);
+    setUser(response.data);
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await api.post("/auth/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
   };
 
   const logout = () => {
@@ -77,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        updateProfile,
+        changePassword,
       }}
     >
       {children}

@@ -91,6 +91,32 @@
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
+/* Blue Theme Variant */
+.theme-blue {
+  --primary: 217 91% 60%;
+  --primary-foreground: 210 40% 98%;
+  --ring: 217 91% 60%;
+}
+
+.theme-blue.dark {
+  --primary: 217 91% 60%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --ring: 217 91% 60%;
+}
+
+/* Emerald Theme Variant */
+.theme-emerald {
+  --primary: 160 84% 39%;
+  --primary-foreground: 210 40% 98%;
+  --ring: 160 84% 39%;
+}
+
+.theme-emerald.dark {
+  --primary: 160 84% 39%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --ring: 160 84% 39%;
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
