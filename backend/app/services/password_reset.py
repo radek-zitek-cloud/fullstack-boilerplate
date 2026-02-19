@@ -1,7 +1,7 @@
 """Password reset service for managing reset tokens."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select
@@ -23,7 +23,7 @@ async def create_reset_token(user_id: int, db: AsyncSession) -> str:
         The generated token string
     """
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=24)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
     
     reset_token = PasswordResetToken(
         user_id=user_id,
@@ -50,7 +50,7 @@ async def validate_reset_token(token: str, db: AsyncSession) -> Optional[User]:
         select(PasswordResetToken)
         .where(
             PasswordResetToken.token == token,
-            PasswordResetToken.expires_at > datetime.utcnow(),
+            PasswordResetToken.expires_at > datetime.now(timezone.utc),
             PasswordResetToken.used == False
         )
         .options(selectinload(PasswordResetToken.user))

@@ -1,7 +1,9 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,9 +39,23 @@ logger = get_logger(__name__)
 router = APIRouter()
 settings = get_settings()
 
+# Rate limiter instance (configured in main.py)
+limiter = Limiter(key_func=get_remote_address)
+
+
+def conditional_rate_limit(limit_string: str):
+    """Apply rate limiting only if enabled in settings."""
+    def decorator(func):
+        if settings.RATE_LIMIT_ENABLED:
+            return limiter.limit(limit_string)(func)
+        return func
+    return decorator
+
 
 @router.post("/login", response_model=Token)
+@conditional_rate_limit("5/minute")
 async def login(
+    request: Request,
     login_data: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
@@ -69,7 +85,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=Token)
+@conditional_rate_limit("10/minute")
 async def refresh_token(
+    request: Request,
     refresh_data: RefreshRequest,
 ) -> Any:
     payload = decode_token(refresh_data.refresh_token)
@@ -98,7 +116,9 @@ async def refresh_token(
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@conditional_rate_limit("5/minute")
 async def register(
+    request: Request,
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
@@ -157,7 +177,9 @@ async def change_password(
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@conditional_rate_limit("3/hour")
 async def forgot_password(
+    request: Request,
     request_data: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> None:
