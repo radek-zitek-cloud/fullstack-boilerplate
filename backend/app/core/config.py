@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:5173"
+    
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = True
 
     class Config:
         env_file = ".env"

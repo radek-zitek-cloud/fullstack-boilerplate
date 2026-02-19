@@ -73,7 +73,11 @@ async def upload_file(
 
 
 @router.get("/uploads/{filename}")
-async def get_uploaded_file(filename: str):
+async def get_uploaded_file(
+    filename: str,
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Retrieve uploaded file. Requires authentication."""
     upload_dir = get_upload_dir()
     file_path = upload_dir / filename
 

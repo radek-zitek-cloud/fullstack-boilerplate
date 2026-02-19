@@ -2,15 +2,70 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.api_v1.api import api_router
 from app.core.config import get_settings
 from app.core.logging import get_access_logger, get_logger, setup_logging
 
+# Rate limiter setup
+# Use memory storage for simplicity (can be changed to Redis in production)
+from limits.storage import MemoryStorage
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri="memory://",
+)
+
 settings = get_settings()
 logger = get_logger(__name__)
 access_logger = get_access_logger()
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+    
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # XSS Protection
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # Referrer Policy
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # Content Security Policy (basic)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self'; "
+            "connect-src 'self';"
+        )
+        
+        # Permissions Policy
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), "
+            "camera=(), "
+            "geolocation=(), "
+            "gyroscope=(), "
+            "magnetometer=(), "
+            "microphone=(), "
+            "payment=(), "
+            "usb=()"
+        )
+        
+        return response
 
 
 @asynccontextmanager
@@ -18,6 +73,11 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     logger.info("Application starting up", extra={"version": "0.1.3"})
+    
+    # Validate production settings
+    if settings.SECRET_KEY == "your-secret-key-change-in-production":
+        logger.warning("Using default SECRET_KEY - change for production!")
+    
     yield
     # Shutdown
     logger.info("Application shutting down")
@@ -26,9 +86,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Full-Stack Boilerplate API",
     description="A production-ready full-stack boilerplate with FastAPI",
-    version="0.1.0",
+    version="0.1.3",
     lifespan=lifespan,
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
+
+# Store limiter reference for potential test disabling
+app.state._limiter = limiter
+
+# Security Headers (must be before CORS to ensure headers are added)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS
 app.add_middleware(
