@@ -9,6 +9,8 @@ import Dashboard from "@/pages/Dashboard";
 import Tasks from "@/pages/Tasks";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Layout from "@/components/Layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -33,6 +35,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/"
               element={

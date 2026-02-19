@@ -69,6 +69,11 @@ export default function Login() {
               Register
             </Link>
           </p>
+          <p className="text-center mt-2 text-sm">
+            <Link to="/forgot-password" className="text-muted-foreground hover:text-foreground">
+              Forgot password?
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>
