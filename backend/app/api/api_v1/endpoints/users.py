@@ -5,8 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_db
+from app.core.sanitization import sanitize_html, sanitize_text
 from app.models.user import User
 from app.schemas.user import ProfileUpdate, UserResponse
+
+
+# Fields that should be sanitized
+HTML_FIELDS = {"note"}
+TEXT_FIELDS = {"first_name", "last_name"}
 
 router = APIRouter()
 
@@ -44,7 +50,13 @@ async def update_me(
         )
 
     update_data = profile_data.model_dump(exclude_unset=True)
+    
+    # Sanitize input fields
     for field, value in update_data.items():
+        if field in HTML_FIELDS:
+            value = sanitize_html(value)
+        elif field in TEXT_FIELDS:
+            value = sanitize_text(value)
         setattr(user, field, value)
 
     await db.commit()
