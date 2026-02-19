@@ -30,7 +30,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Login</CardTitle>
@@ -65,7 +65,7 @@ export default function Login() {
           </form>
           <p className="text-center mt-4 text-sm">
             Don't have an account?{" "}
-            <Link to="/register" className="text-blue-600 hover:underline">
+            <Link to="/register" className="text-primary hover:underline">
               Register
             </Link>
           </p>

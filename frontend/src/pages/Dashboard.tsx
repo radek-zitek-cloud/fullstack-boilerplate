@@ -17,7 +17,7 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Use the navigation above to manage your tasks.
             </p>
           </CardContent>
@@ -29,7 +29,7 @@ export default function Dashboard() {
             <CardDescription>Navigate to common actions</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc list-inside text-sm text-gray-600">
+            <ul className="list-disc list-inside text-sm text-muted-foreground">
               <li>View and manage your tasks</li>
               <li>Track your progress</li>
               <li>Update your profile</li>
@@ -45,7 +45,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              <span className="text-sm text-gray-600">All systems operational</span>
+              <span className="text-sm text-muted-foreground">All systems operational</span>
             </div>
           </CardContent>
         </Card>

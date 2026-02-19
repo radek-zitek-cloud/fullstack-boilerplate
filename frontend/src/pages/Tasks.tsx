@@ -232,7 +232,7 @@ export default function Tasks() {
             </CardHeader>
             <CardContent>
               {task.description && (
-                <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
               )}
               <div className="flex gap-2">
                 <Badge className={getStatusColor(task.status)}>
@@ -248,7 +248,7 @@ export default function Tasks() {
         
         {tasks.length === 0 && (
           <Card>
-            <CardContent className="py-8 text-center text-gray-500">
+            <CardContent className="py-8 text-center text-muted-foreground">
               No tasks yet. Create your first task to get started!
             </CardContent>
           </Card>
