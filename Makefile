@@ -26,14 +26,20 @@ help:
 	@echo "  make down           - Stop all services"
 	@echo "  make down-v         - Stop services and remove volumes"
 	@echo "  make logs           - View logs from all services"
-	@echo "  make logs-backend   - View backend logs"
-	@echo "  make logs-frontend  - View frontend logs"
+	@echo "  make logs-backend   - View backend container logs"
+	@echo "  make logs-frontend  - View frontend container logs"
 	@echo ""
 	@echo "$(GREEN)Local Development:$(NC)"
 	@echo "  make backend        - Start backend locally (uv run)"
 	@echo "  make frontend       - Start frontend locally (npm run dev)"
 	@echo "  make backend-deps   - Install/update backend dependencies"
 	@echo "  make frontend-deps  - Install/update frontend dependencies"
+	@echo ""
+	@echo "$(GREEN)Logging:$(NC)"
+	@echo "  make logs-app       - View application logs (app.log)"
+	@echo "  make logs-error     - View error logs (error.log)"
+	@echo "  make logs-access    - View access logs (access.log)"
+	@echo "  make grep-logs      - Search for ERROR in logs"
 	@echo ""
 	@echo "$(GREEN)Database:$(NC)"
 	@echo "  make db-init        - Initialize database and create admin user"
@@ -135,6 +141,23 @@ logs-backend:
 ## View frontend logs
 logs-frontend:
 	docker-compose logs -f frontend
+
+## View application logs (from files)
+logs-app:
+	tail -f logs/app.log
+
+## View error logs (from files)
+logs-error:
+	tail -f logs/error.log
+
+## View access logs (from files)
+logs-access:
+	tail -f logs/access.log
+
+## Search logs for errors
+grep-logs:
+	@echo "$(BLUE)Searching for errors in logs...$(NC)"
+	grep "ERROR" logs/app.log | tail -20
 
 ## Open shell in backend container
 shell-backend:
@@ -243,6 +266,7 @@ clean-all: clean
 	rm -rf frontend/node_modules
 	rm -rf data/*.db data/*.sqlite
 	rm -rf uploads/*
+	rm -rf logs/*.log logs/*.log.*
 	@echo "$(GREEN)Full cleanup complete!$(NC)"
 
 ## Development Utilities
@@ -250,7 +274,7 @@ clean-all: clean
 ## Setup project for first time
 setup:
 	@echo "$(BLUE)Setting up project...$(NC)"
-	mkdir -p data uploads
+	mkdir -p data uploads logs
 	cp backend/.env.example backend/.env 2>/dev/null || true
 	cp frontend/.env.example frontend/.env 2>/dev/null || true
 	$(MAKE) backend-deps

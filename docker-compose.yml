@@ -13,6 +13,7 @@ services:
       - /app/.venv
       - ./data:/app/data
       - ./uploads:/app/uploads
+      - ./logs:/app/logs
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////app/data/app.db
       - REDIS_URL=redis://redis:6379/0

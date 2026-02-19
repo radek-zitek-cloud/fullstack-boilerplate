@@ -41,6 +41,7 @@ fullstack-boilerplate/
 │   └── pyproject.toml
 ├── data/               # SQLite database storage
 ├── uploads/            # User uploaded files
+├── logs/               # Application logs (JSON format)
 ├── docker-compose.yml
 ├── Dockerfile.frontend
 ├── Dockerfile.backend
@@ -191,7 +192,90 @@ Once the backend is running, visit:
 - ✅ Background jobs with Celery
 - ✅ Comprehensive test coverage
 - ✅ Hot reload in development
+- ✅ Centralized logging with structured JSON format
 - ✅ API documentation (OpenAPI/Swagger)
+
+## 📊 Logging & Observability (MVP)
+
+This boilerplate includes centralized logging with structured JSON format.
+
+### Log Directory Structure
+
+```
+logs/
+├── app.log          # Application logs (INFO level)
+├── app.log.1        # Rotated logs (10MB max, 5 backups)
+├── error.log        # Error logs only (ERROR level)
+├── error.log.1
+└── access.log       # HTTP request logs
+```
+
+### Log Locations
+
+- **Local Development**: `fullstack-boilerplate/logs/`
+- **Docker**: Mounted from `./logs` → container `/app/logs`
+
+### Log Format (JSON)
+
+```json
+{
+  "timestamp": "2026-02-19T17:30:00.123456",
+  "level": "INFO",
+  "logger": "app.api.endpoints.auth",
+  "message": "User logged in successfully",
+  "module": "auth",
+  "function": "login",
+  "line": 45,
+  "request_id": "uuid-here",
+  "user_id": 123
+}
+```
+
+### Viewing Logs
+
+```bash
+# Real-time logs
+make logs-backend
+
+# Specific log files
+tail -f logs/app.log
+tail -f logs/error.log
+tail -f logs/access.log
+
+# Search logs
+grep "ERROR" logs/app.log | jq .
+```
+
+### Using Logger in Code
+
+```python
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Basic logging
+logger.info("User action completed")
+logger.error("Something went wrong")
+
+# Structured logging with extra fields
+logger.info(
+    "User logged in",
+    extra={
+        "user_id": user.id,
+        "email": user.email,
+        "ip_address": request.client.host
+    }
+)
+```
+
+### Features
+
+- **Structured JSON**: Easy to parse and analyze
+- **Log Rotation**: Automatic rotation at 10MB, keeps 5 backups
+- **Separate Files**: Application, error, and access logs
+- **Request Tracking**: HTTP requests logged with timing
+- **Error Tracing**: Full stack traces in error logs
+- **Docker Ready**: Logs persist in host directory
 
 ## 🏷️ Semantic Versioning & Releases
 

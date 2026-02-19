@@ -56,6 +56,11 @@ frontend/build/
 logs/
 *.log
 
+# Logs directory
+logs/*.log
+logs/*.log.*
+!logs/.gitkeep
+
 # Uploads directory (uploaded files)
 uploads/*
 !uploads/.gitkeep
