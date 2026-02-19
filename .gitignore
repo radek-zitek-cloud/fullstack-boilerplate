@@ -56,8 +56,11 @@ frontend/build/
 logs/
 *.log
 
-# Uploads
-uploads/
+# Uploads directory (uploaded files)
+uploads/*
+!uploads/.gitkeep
+
+# Media files
 media/
 
 # Data directory (database files)

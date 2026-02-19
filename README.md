@@ -40,6 +40,7 @@ fullstack-boilerplate/
 │   ├── tests/
 │   └── pyproject.toml
 ├── data/               # SQLite database storage
+├── uploads/            # User uploaded files
 ├── docker-compose.yml
 ├── Dockerfile.frontend
 ├── Dockerfile.backend

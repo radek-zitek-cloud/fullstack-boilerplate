@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # File Uploads
-    UPLOAD_DIR: str = "uploads"
+    # File Uploads (relative to backend/ folder, ../uploads/ puts it in project root)
+    UPLOAD_DIR: str = "../uploads"
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
 
     # CORS
