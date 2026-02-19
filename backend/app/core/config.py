@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
+    MAIL_VALIDATE_CERTS: bool = True  # Set to False for mail servers with self-signed/invalid certs
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

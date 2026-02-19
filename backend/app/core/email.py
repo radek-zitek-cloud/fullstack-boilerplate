@@ -7,7 +7,8 @@ from app.core.tasks import send_email_task
 
 settings = get_settings()
 
-# Configure FastMail
+# Configure FastMail with SSL context that can handle invalid certificates
+# Set MAIL_VALIDATE_CERTS=False in .env for mail servers with self-signed/hostname mismatch certs
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
@@ -17,7 +18,7 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=settings.MAIL_STARTTLS,
     MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
+    VALIDATE_CERTS=settings.MAIL_VALIDATE_CERTS,
 )
 
 fastmail = FastMail(conf)
