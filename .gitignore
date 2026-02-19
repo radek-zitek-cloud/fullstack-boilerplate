@@ -83,8 +83,11 @@ e2e/playwright-report/
 e2e/blob-report/
 e2e/playwright/.cache/
 # Serena configuration
-.serena/cache/
-.serena/index/
+.serena/
 
 # Keep project configuration
 !.serena/project.yml
+!.serena/config/  # If there's shared config
+
+# Sisyphus working memories
+.sisyphus/  # Agent working files and memories
