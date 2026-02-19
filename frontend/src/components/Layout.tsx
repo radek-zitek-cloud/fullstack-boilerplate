@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutDashboard, CheckSquare, LogOut, User, Settings } from "lucide-react";
+import StatusBar from "./StatusBar";
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -84,9 +85,11 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pb-20">
         <Outlet />
       </main>
+      
+      <StatusBar />
     </div>
   );
 }
