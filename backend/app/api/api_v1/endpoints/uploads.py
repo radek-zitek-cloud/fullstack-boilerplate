@@ -11,7 +11,6 @@ from app.api.deps import get_current_active_user
 from app.core.config import get_settings
 
 router = APIRouter(
-    prefix="/uploads",
     tags=["uploads"],
     responses={404: {"description": "File not found"}},
 )

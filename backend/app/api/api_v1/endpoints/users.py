@@ -15,7 +15,6 @@ HTML_FIELDS = {"note"}
 TEXT_FIELDS = {"first_name", "last_name"}
 
 router = APIRouter(
-    prefix="/users",
     tags=["users"],
     responses={404: {"description": "Not found"}},
 )

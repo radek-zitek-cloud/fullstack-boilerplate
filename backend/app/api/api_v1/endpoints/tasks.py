@@ -10,7 +10,6 @@ from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 router = APIRouter(
-    prefix="/tasks",
     tags=["tasks"],
     responses={404: {"description": "Task not found"}},
 )
