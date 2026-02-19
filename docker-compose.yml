@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: boilerplate-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+      - app-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/app.db
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - backend/.env
+    depends_on:
+      - redis
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: boilerplate-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    env_file:
+      - frontend/.env
+    command: npm run dev -- --host
+
+  redis:
+    image: redis:7-alpine
+    container_name: boilerplate-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  app-data:
+  redis-data:
