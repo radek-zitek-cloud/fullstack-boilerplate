@@ -43,15 +43,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Referrer Policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         
-        # Content Security Policy (basic)
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; "
-            "font-src 'self'; "
-            "connect-src 'self';"
-        )
+        # Content Security Policy (basic) - Skip for docs/redoc to allow Swagger UI
+        if not request.url.path.startswith(("/docs", "/redoc", "/openapi.json")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "font-src 'self'; "
+                "connect-src 'self';"
+            )
         
         # Permissions Policy
         response.headers["Permissions-Policy"] = (
