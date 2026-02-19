@@ -1,9 +1,13 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.password_reset_token import PasswordResetToken
+    from app.models.task import Task
 
 
 class User(Base, TimestampMixin):
@@ -19,3 +23,6 @@ class User(Base, TimestampMixin):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     tasks: Mapped[list["Task"]] = relationship("Task", back_populates="user", lazy="selectin")
+    reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        "PasswordResetToken", back_populates="user", lazy="selectin"
+    )

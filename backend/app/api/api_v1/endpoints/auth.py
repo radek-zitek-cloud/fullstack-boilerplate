@@ -15,8 +15,20 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RefreshRequest, Token
+from app.core.email import send_password_reset_email
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    ResetPasswordRequest,
+    Token,
+)
 from app.schemas.user import UserCreate, UserResponse, PasswordChange
+from app.services.password_reset import (
+    create_reset_token,
+    mark_token_used,
+    validate_reset_token,
+)
 from app.api.deps import get_current_active_user
 from app.core.logging import get_logger
 
@@ -142,3 +154,59 @@ async def change_password(
     await db.commit()
 
     logger.info(f"Password changed for user: {user.email}", extra={"user_id": user.id})
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    request_data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Request password reset email.
+    
+    Always returns 204 to prevent email enumeration attacks.
+    """
+    # Find user by email
+    result = await db.execute(select(User).where(User.email == request_data.email))
+    user = result.scalar_one_or_none()
+    
+    # Always return 204 to prevent email enumeration
+    if not user:
+        return
+    
+    # Create reset token
+    token = await create_reset_token(user.id, db)
+    
+    # Generate reset URL
+    frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
+    reset_url = f"{frontend_url}/reset-password?token={token}"
+    
+    # Send email
+    await send_password_reset_email(user.email, user.first_name, reset_url)
+    
+    logger.info(f"Password reset requested for: {user.email}")
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(
+    reset_data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Reset password with token."""
+    # Validate token
+    user = await validate_reset_token(reset_data.token, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token",
+        )
+    
+    # Update password
+    user.hashed_password = get_password_hash(reset_data.new_password)
+    
+    # Mark token as used
+    await mark_token_used(reset_data.token, db)
+    
+    await db.commit()
+    
+    logger.info(f"Password reset completed for: {user.email}")
