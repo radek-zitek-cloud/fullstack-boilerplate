@@ -19,10 +19,7 @@ export default function Layout() {
     { name: "Tasks", href: "/tasks", icon: CheckSquare },
   ];
 
-  const userNavigation = [
-    { name: "Profile", href: "/profile" },
-    { name: "Settings", href: "/settings" },
-  ];
+
 
   return (
     <div className="min-h-screen bg-gray-50">

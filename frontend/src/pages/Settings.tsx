@@ -27,7 +27,7 @@ export default function Settings() {
             <Label className="text-base font-medium">Theme Mode</Label>
             <RadioGroup
               value={mode}
-              onValueChange={(value) => setMode(value as "light" | "dark" | "system")}
+              onValueChange={(value: string) => setMode(value as "light" | "dark" | "system")}
               className="grid grid-cols-3 gap-4"
             >
               <div>
@@ -75,7 +75,7 @@ export default function Settings() {
             <Label className="text-base font-medium">Accent Color</Label>
             <RadioGroup
               value={color}
-              onValueChange={(value) => setColor(value as "slate" | "blue" | "emerald")}
+              onValueChange={(value: string) => setColor(value as "slate" | "blue" | "emerald")}
               className="grid grid-cols-3 gap-4"
             >
               <div>
