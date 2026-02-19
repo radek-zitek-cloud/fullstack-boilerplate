@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///../data/app.db"
 
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

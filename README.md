@@ -39,6 +39,7 @@ fullstack-boilerplate/
 │   ├── alembic/
 │   ├── tests/
 │   └── pyproject.toml
+├── data/               # SQLite database storage
 ├── docker-compose.yml
 ├── Dockerfile.frontend
 ├── Dockerfile.backend

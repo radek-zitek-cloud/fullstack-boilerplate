@@ -60,6 +60,12 @@ logs/
 uploads/
 media/
 
+# Data directory (database files)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+!data/.gitkeep
+
 # Docker
 .docker/
 
