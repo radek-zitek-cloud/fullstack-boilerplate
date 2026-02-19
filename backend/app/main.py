@@ -72,7 +72,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
-    logger.info("Application starting up", extra={"version": "0.1.3"})
+    logger.info("Application starting up", extra={"version": "0.2.0"})
     
     # Validate production settings
     if settings.SECRET_KEY == "your-secret-key-change-in-production":
@@ -183,7 +183,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     logger.debug("Health check requested")
-    return {"status": "ok", "version": "0.1.3"}
+    return {"status": "ok", "version": "0.2.0"}
 
 
 @app.get("/")
@@ -191,5 +191,5 @@ async def root():
     return {
         "message": "Welcome to Full-Stack Boilerplate API",
         "docs": "/docs",
-        "version": "0.1.3",
+        "version": "0.2.0",
     }
