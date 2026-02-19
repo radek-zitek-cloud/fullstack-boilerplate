@@ -2,10 +2,34 @@
 
 # Variables
 PROJECT_NAME := fullstack-boilerplate
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.0.0-dev")
+VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
+GIT_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BACKEND_IMAGE := $(PROJECT_NAME)-backend
 FRONTEND_IMAGE := $(PROJECT_NAME)-frontend
 REGISTRY ?= ghcr.io/username
+
+# Version files to update
+VERSION_FILE := VERSION
+BACKEND_VERSION_FILE := backend/app/main.py
+FRONTEND_VERSION_FILE := frontend/src/components/StatusBar.tsx
+
+# Colors for output
+BLUE := \033[36m
+GREEN := \033[32m
+YELLOW := \033[33m
+RED := \033[31m
+NC := \033[0m # No Color
+
+## Update version in all files
+update-version:
+	@echo "$(BLUE)Updating version to $(VERSION)...$(NC)"
+	@echo "$(VERSION)" > $(VERSION_FILE)
+	@sed -i 's/"version": "[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "$(VERSION)"/g' $(BACKEND_VERSION_FILE)
+	@sed -i "s/VITE_APP_VERSION || \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/VITE_APP_VERSION || \"$(VERSION)\"/g" $(FRONTEND_VERSION_FILE)
+	@echo "$(GREEN)Version updated in:$(NC)"
+	@echo "  - $(VERSION_FILE)"
+	@echo "  - $(BACKEND_VERSION_FILE)"
+	@echo "  - $(FRONTEND_VERSION_FILE)"
 
 # Colors for output
 BLUE := \033[36m
@@ -54,7 +78,8 @@ help:
 	@echo ""
 	@echo "$(GREEN)Release & Versioning:$(NC)"
 	@echo "  make version        - Show current version"
-	@echo "  make tag            - Create and push git tag (VERSION=x.y.z)"
+	@echo "  make bump-version   - Bump version in all files (VERSION=x.y.z)"
+	@echo "  make tag            - Create tag, update versions, push (VERSION=x.y.z)"
 	@echo "  make release        - Build and push Docker images for release"
 	@echo ""
 	@echo "$(GREEN)Utilities:$(NC)"
@@ -89,7 +114,22 @@ release:
 
 ## Show current version
 version:
-	@echo "$(GREEN)Current version: $(VERSION)$(NC)"
+	@echo "$(GREEN)Project version: $(VERSION)$(NC)"
+	@echo "$(GREEN)Git version: $(GIT_VERSION)$(NC)"
+
+## Bump version (usage: make bump-version VERSION=1.2.3)
+bump-version:
+ifndef VERSION
+	@echo "$(RED)Error: VERSION is required$(NC)"
+	@echo "Usage: make bump-version VERSION=1.2.3"
+	@exit 1
+endif
+	@echo "$(BLUE)Bumping version to $(VERSION)...$(NC)"
+	@echo "$(VERSION)" > $(VERSION_FILE)
+	@sed -i 's/"version": "[^"]*"/"version": "$(VERSION)"/g' $(BACKEND_VERSION_FILE)
+	@sed -i 's/|| "[^"]*")/|| "$(VERSION)")/g' $(FRONTEND_VERSION_FILE)
+	@echo "$(GREEN)Version bumped to $(VERSION)!$(NC)"
+	@echo "$(YELLOW)Now commit changes and run: make tag VERSION=$(VERSION)$(NC)"
 
 ## Create and push git tag (usage: make tag VERSION=1.2.3)
 tag:
@@ -99,7 +139,13 @@ ifndef VERSION
 	@exit 1
 endif
 	@echo "$(BLUE)Creating git tag v$(VERSION)...$(NC)"
+	@echo "$(VERSION)" > $(VERSION_FILE)
+	@sed -i 's/"version": "[^"]*"/"version": "$(VERSION)"/g' $(BACKEND_VERSION_FILE)
+	@sed -i 's/|| "[^"]*")/|| "$(VERSION)")/g' $(FRONTEND_VERSION_FILE)
+	git add $(VERSION_FILE) $(BACKEND_VERSION_FILE) $(FRONTEND_VERSION_FILE)
+	git commit -m "chore: bump version to $(VERSION)" || true
 	git tag -a v$(VERSION) -m "Release v$(VERSION)"
+	git push origin main
 	git push origin v$(VERSION)
 	@echo "$(GREEN)Tag v$(VERSION) created and pushed!$(NC)"
 	@echo "$(YELLOW)Run 'make release' to build and push Docker images$(NC)"

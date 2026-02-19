@@ -8,7 +8,7 @@ export default function StatusBar() {
   const [health, setHealth] = useState<{ status: string; version?: string } | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
-  const [appVersion] = useState(import.meta.env.VITE_APP_VERSION || "0.1.1");
+  const [appVersion] = useState(import.meta.env.VITE_APP_VERSION || "0.1.2");
 
   const checkHealth = async () => {
     try {

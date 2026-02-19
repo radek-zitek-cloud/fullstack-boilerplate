@@ -113,7 +113,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     logger.debug("Health check requested")
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "0.1.2"}
 
 
 @app.get("/")
@@ -121,5 +121,5 @@ async def root():
     return {
         "message": "Welcome to Full-Stack Boilerplate API",
         "docs": "/docs",
-        "version": "0.1.0",
+        "version": "0.1.2",
     }
