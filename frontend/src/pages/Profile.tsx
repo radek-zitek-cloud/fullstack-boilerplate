@@ -123,9 +123,9 @@ export default function Profile() {
                     type="email"
                     value={user?.email || ""}
                     disabled
-                    className="bg-gray-100"
+                    className="bg-muted text-muted-foreground"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Email cannot be changed
                   </p>
                 </div>
