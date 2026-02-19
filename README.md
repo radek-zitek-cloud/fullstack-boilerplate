@@ -44,12 +44,62 @@ fullstack-boilerplate/
 ├── docker-compose.yml
 ├── Dockerfile.frontend
 ├── Dockerfile.backend
+├── Makefile           # Build automation & versioning
 └── README.md
 ```
 
-## 🛠️ Quick Start
+## 🛠️ Quick Start (Using Makefile)
 
-### Option 1: Docker Compose (Recommended)
+```bash
+# First time setup
+make setup
+
+# Start with Docker (recommended)
+make up-d
+
+# Or start locally for development
+make backend   # Terminal 1
+make frontend  # Terminal 2
+```
+
+### Makefile Commands
+
+Run `make` or `make help` to see all available commands.
+
+**Docker Operations:**
+```bash
+make build          # Build Docker images with version tags
+make up             # Start all services
+make up-d           # Start services in detached mode
+make down           # Stop services
+make logs           # View all logs
+make logs-backend   # View backend logs only
+```
+
+**Local Development:**
+```bash
+make backend        # Start backend (uv run)
+make frontend       # Start frontend (npm run dev)
+make backend-deps   # Install backend dependencies
+make frontend-deps  # Install frontend dependencies
+```
+
+**Database:**
+```bash
+make db-init                    # Initialize database with admin user
+make db-migrate                 # Run migrations
+make db-migration MESSAGE="..." # Create new migration
+make db-downgrade               # Downgrade one revision
+```
+
+**Testing:**
+```bash
+make test-backend   # Run pytest
+make test-frontend  # Run Vitest
+make test-e2e       # Run Playwright
+```
+
+### Option 2: Manual Docker Compose
 
 ```bash
 # Start all services
@@ -61,7 +111,7 @@ docker-compose up -d
 # API Docs: http://localhost:8000/docs
 ```
 
-### Option 2: Local Development
+### Option 3: Manual Local Development
 
 **Backend:**
 ```bash
@@ -142,6 +192,64 @@ Once the backend is running, visit:
 - ✅ Comprehensive test coverage
 - ✅ Hot reload in development
 - ✅ API documentation (OpenAPI/Swagger)
+
+## 🏷️ Semantic Versioning & Releases
+
+This project uses [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH).
+
+### Versioning Workflow
+
+**1. Check current version:**
+```bash
+make version
+# Output: Current version: v1.2.3-5-gabc1234
+```
+
+**2. Create a new release tag:**
+```bash
+# For a patch release (bug fixes)
+make tag VERSION=1.2.4
+
+# For a minor release (new features, backwards compatible)
+make tag VERSION=1.3.0
+
+# For a major release (breaking changes)
+make tag VERSION=2.0.0
+```
+
+**3. Build and push release images:**
+```bash
+# Set your container registry (defaults to ghcr.io/username)
+export REGISTRY=ghcr.io/myusername
+
+# Build and push images with version tags
+make release
+```
+
+This will:
+- Build Docker images tagged with version (e.g., `v1.2.4`) and `latest`
+- Push to your container registry
+
+### Version Tag Format
+
+- **Git tags**: `v1.2.3` (always prefix with 'v')
+- **Docker tags**: `1.2.3` and `latest`
+- **Full image name**: `ghcr.io/username/fullstack-boilerplate-backend:1.2.3`
+
+### Docker Image Tags
+
+Images are automatically tagged with:
+- `fullstack-boilerplate-backend:1.2.3` - Specific version
+- `fullstack-boilerplate-backend:latest` - Always latest
+- `fullstack-boilerplate-frontend:1.2.3` - Specific version
+- `fullstack-boilerplate-frontend:latest` - Always latest
+
+### Automated Version Detection
+
+The Makefile automatically detects the version from git tags:
+- If on a tag (e.g., `v1.2.3`): Uses `1.2.3`
+- If between tags: Uses `1.2.3-5-gabc1234` (5 commits since v1.2.3)
+- If no tags: Uses `0.0.0-dev`
 
 ## 📝 License
 
