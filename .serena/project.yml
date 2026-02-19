@@ -1,0 +1,78 @@
+# Serena Project Configuration
+# https://github.com/oraios/serena
+
+project:
+  name: fullstack-boilerplate
+  description: Full-stack boilerplate with FastAPI backend and React frontend
+  
+  # Define the languages used in the project
+  languages:
+    - id: python
+      name: Python
+      root: backend
+      server: python
+      file_patterns:
+        - "*.py"
+        - "*.pyi"
+      
+    - id: typescript
+      name: TypeScript
+      root: frontend/src
+      server: typescript
+      file_patterns:
+        - "*.ts"
+        - "*.tsx"
+      
+  # Exclude patterns (directories and files to ignore)
+  exclude:
+    - node_modules
+    - .venv
+    - venv
+    - __pycache__
+    - dist
+    - build
+    - .git
+    - data/*.db
+    - data/*.sqlite
+    - uploads/*
+    - logs/*
+    - "*.log"
+    - "*.pyc"
+    - .pytest_cache
+    - .mypy_cache
+    - coverage
+    - htmlcov
+
+  # Include additional contexts
+  contexts:
+    - name: documentation
+      files:
+        - README.md
+        - backend/README.md
+        - frontend/README.md
+      
+    - name: configuration
+      files:
+        - docker-compose.yml
+        - Dockerfile.backend
+        - Dockerfile.frontend
+        - Makefile
+        - backend/pyproject.toml
+        - frontend/package.json
+        - frontend/tsconfig.json
+        - frontend/vite.config.ts
+        - frontend/components.json
+
+# Language server configurations
+servers:
+  python:
+    type: python
+    settings:
+      python.analysis.typeCheckingMode: basic
+      python.analysis.autoImportCompletions: true
+      
+  typescript:
+    type: typescript
+    settings:
+      typescript.preferences.includePackageJsonAutoImports: "on"
+      typescript.suggest.autoImports: true
