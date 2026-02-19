@@ -16,7 +16,11 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RefreshRequest, Token
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, PasswordChange
+from app.api.deps import get_current_active_user
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 settings = get_settings()
@@ -100,9 +104,41 @@ async def register(
     user = User(
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
+    logger.info(f"User registered: {user.email}", extra={"user_id": user.id})
     return user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    password_data: PasswordChange,
+    current_user: dict = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    result = await db.execute(select(User).where(User.id == current_user["id"]))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Verify current password
+    if not verify_password(password_data.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password",
+        )
+
+    # Update password
+    user.hashed_password = get_password_hash(password_data.new_password)
+    await db.commit()
+
+    logger.info(f"Password changed for user: {user.email}", extra={"user_id": user.id})

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_db
 from app.models.user import User
-from app.schemas.user import UserResponse
+from app.schemas.user import ProfileUpdate, UserResponse
 
 router = APIRouter()
 
@@ -25,6 +25,30 @@ async def get_me(
             detail="User not found",
         )
 
+    return user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    profile_data: ProfileUpdate,
+    current_user: dict = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    result = await db.execute(select(User).where(User.id == current_user["id"]))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    update_data = profile_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
