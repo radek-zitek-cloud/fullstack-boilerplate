@@ -9,6 +9,7 @@ export default function StatusBar() {
   const [isOnline, setIsOnline] = useState(true);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [appVersion] = useState(import.meta.env.VITE_APP_VERSION || "0.2.0");
+  const environment = import.meta.env.MODE || "development";
 
   const checkHealth = async () => {
     try {
@@ -38,6 +39,24 @@ export default function StatusBar() {
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <GitBranch className="w-3 h-3" />
             <span>v{appVersion}</span>
+          </div>
+
+          {/* Separator */}
+          <span className="text-border">|</span>
+
+          {/* Environment */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase ${
+                environment === "production"
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                  : environment === "staging"
+                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+              }`}
+            >
+              {environment}
+            </span>
           </div>
 
           {/* Separator */}

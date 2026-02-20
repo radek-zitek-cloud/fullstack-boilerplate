@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
 class TaskStatus(str, PyEnum):
@@ -20,7 +20,7 @@ class TaskPriority(str, PyEnum):
     HIGH = "high"
 
 
-class Task(Base, TimestampMixin):
+class Task(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

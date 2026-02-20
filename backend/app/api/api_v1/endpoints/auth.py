@@ -7,8 +7,10 @@ from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_current_active_user, get_db
 from app.core.config import get_settings
+from app.core.email import send_password_reset_email
+from app.core.logging import get_logger
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -16,8 +18,8 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
+from app.models.audit_log import AuditAction
 from app.models.user import User
-from app.core.email import send_password_reset_email
 from app.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -25,14 +27,13 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     Token,
 )
-from app.schemas.user import UserCreate, UserResponse, PasswordChange
+from app.schemas.user import PasswordChange, UserCreate, UserResponse
+from app.services.audit import create_audit_log, log_model_change
 from app.services.password_reset import (
     create_reset_token,
     mark_token_used,
     validate_reset_token,
 )
-from app.api.deps import get_current_active_user
-from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -45,10 +46,12 @@ limiter = Limiter(key_func=get_remote_address)
 
 def conditional_rate_limit(limit_string: str):
     """Apply rate limiting only if enabled in settings."""
+
     def decorator(func):
         if settings.RATE_LIMIT_ENABLED:
             return limiter.limit(limit_string)(func)
         return func
+
     return decorator
 
 
@@ -71,22 +74,22 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Authenticate user and return JWT tokens.
-    
+
     Args:
         request: FastAPI request object
         login_data: Login credentials (email and password)
         db: Database session
-        
+
     Returns:
         Token object containing access_token, refresh_token, and token_type
-        
+
     Raises:
         HTTPException: 401 if credentials are invalid
         HTTPException: 400 if user account is inactive
     """
     result = await db.execute(select(User).where(User.email == login_data.email))
     user = result.scalar_one_or_none() if result else None
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -107,6 +110,18 @@ async def login(
 
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    # Log successful login
+    await create_audit_log(
+        db=db,
+        action=AuditAction.LOGIN,
+        table_name="users",
+        record_id=str(user.id),
+        user_id=user.id,
+        user_email=user.email,
+        request=request,
+        description=f"User logged in: {user.email}",
+    )
 
     return {
         "access_token": access_token,
@@ -132,14 +147,14 @@ async def refresh_token(
     refresh_data: RefreshRequest,
 ) -> Any:
     """Refresh JWT tokens using a valid refresh token.
-    
+
     Args:
         request: FastAPI request object
         refresh_data: Refresh token data
-        
+
     Returns:
         Token object containing new access_token and refresh_token
-        
+
     Raises:
         HTTPException: 401 if refresh token is invalid or expired
     """
@@ -188,18 +203,18 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Register a new user.
-    
+
     Creates a new user account with the provided email and password.
     Password is hashed before storage. Returns the created user without tokens.
-    
+
     Args:
         request: FastAPI request object
         user_data: User registration data (email, password, optional first/last name)
         db: Database session
-        
+
     Returns:
         UserResponse with created user data
-        
+
     Raises:
         HTTPException: 400 if email already exists
         HTTPException: 422 if validation fails
@@ -225,6 +240,17 @@ async def register(
     await db.commit()
     await db.refresh(user)
 
+    # Log user registration
+    await log_model_change(
+        db=db,
+        action=AuditAction.CREATE,
+        model_instance=user,
+        user_id=user.id,
+        user_email=user.email,
+        request=request,
+        description=f"User registered: {user.email}",
+    )
+
     logger.info(f"User registered: {user.email}", extra={"user_id": user.id})
     return user
 
@@ -247,15 +273,15 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Change user password.
-    
+
     Requires the current password for verification. The new password
     must meet minimum length requirements.
-    
+
     Args:
         password_data: Password change data (current and new password)
         current_user: Current authenticated user from token
         db: Database session
-        
+
     Raises:
         HTTPException: 400 if current password is incorrect
         HTTPException: 401 if not authenticated
@@ -301,16 +327,16 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Request password reset email.
-    
+
     Sends a password reset email to the provided email address if it exists.
     Always returns 204 status to prevent email enumeration attacks.
     The reset token is valid for 24 hours.
-    
+
     Args:
         request: FastAPI request object
         request_data: Forgot password request data (email)
         db: Database session
-        
+
     Note:
         Returns 204 even if email doesn't exist to prevent user enumeration
         Rate limited to 3 requests per hour per IP
@@ -318,21 +344,21 @@ async def forgot_password(
     # Find user by email
     result = await db.execute(select(User).where(User.email == request_data.email))
     user = result.scalar_one_or_none()
-    
+
     # Always return 204 to prevent email enumeration
     if not user:
         return
-    
+
     # Create reset token
     token = await create_reset_token(user.id, db)
-    
+
     # Generate reset URL
     frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
     reset_url = f"{frontend_url}/reset-password?token={token}"
-    
+
     # Send email
     await send_password_reset_email(user.email, user.first_name, reset_url)
-    
+
     logger.info(f"Password reset requested for: {user.email}")
 
 
@@ -351,36 +377,36 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Reset password with token.
-    
+
     Resets the user's password using a valid reset token received via email.
     The token must be valid and not expired (24 hour expiry).
     After reset, the token is marked as used and cannot be reused.
-    
+
     Args:
         reset_data: Reset password data (token and new password)
         db: Database session
-        
+
     Raises:
         HTTPException: 400 if token is invalid or expired
-        
+
     Note:
         The new password must meet minimum length requirements
     """
     # Validate token
     user = await validate_reset_token(reset_data.token, db)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired token",
         )
-    
+
     # Update password
     user.hashed_password = get_password_hash(reset_data.new_password)
-    
+
     # Mark token as used
     await mark_token_used(reset_data.token, db)
-    
+
     await db.commit()
-    
+
     logger.info(f"Password reset completed for: {user.email}")

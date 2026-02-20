@@ -37,12 +37,19 @@ class Settings(BaseSettings):
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
-    
+
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:5173"
-    
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
+
+    # Environment
+    ENVIRONMENT: str = "development"  # development, staging, production
+
+    # Automatic database migrations on startup
+    # Set to false in development when using uvicorn --reload to avoid conflicts
+    AUTO_MIGRATE: bool = True
 
     class Config:
         env_file = ".env"

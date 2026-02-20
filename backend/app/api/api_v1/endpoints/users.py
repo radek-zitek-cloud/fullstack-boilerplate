@@ -51,7 +51,9 @@ async def get_me(
         HTTPException: 401 if not authenticated
         HTTPException: 404 if user not found (rare, user deleted after token issued)
     """
-    result = await db.execute(select(User).where(User.id == current_user["id"]))
+    result = await db.execute(
+        select(User).where(User.id == current_user["id"], User.deleted_at.is_(None))
+    )
     user = result.scalar_one_or_none()
 
     if not user:
@@ -100,7 +102,9 @@ async def update_me(
         HTTPException: 404 if user not found
         HTTPException: 422 if validation fails
     """
-    result = await db.execute(select(User).where(User.id == current_user["id"]))
+    result = await db.execute(
+        select(User).where(User.id == current_user["id"], User.deleted_at.is_(None))
+    )
     user = result.scalar_one_or_none()
 
     if not user:
@@ -110,7 +114,7 @@ async def update_me(
         )
 
     update_data = profile_data.model_dump(exclude_unset=True)
-    
+
     # Sanitize input fields
     for field, value in update_data.items():
         if field in HTML_FIELDS:
@@ -166,7 +170,7 @@ async def get_user(
             detail="Not enough permissions",
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -223,6 +227,8 @@ async def get_users(
             detail="Not enough permissions",
         )
 
-    result = await db.execute(select(User).offset(skip).limit(limit))
+    result = await db.execute(
+        select(User).where(User.deleted_at.is_(None)).offset(skip).limit(limit)
+    )
     users = result.scalars().all()
     return users

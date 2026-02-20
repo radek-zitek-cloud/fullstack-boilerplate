@@ -14,6 +14,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -46,6 +56,8 @@ export default function Tasks() {
     status: "todo",
     priority: "medium",
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -92,15 +104,23 @@ export default function Tasks() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (taskId: number) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
+  const openDeleteDialog = (task: Task) => {
+    setTaskToDelete(task);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!taskToDelete) return;
     
     try {
-      await api.delete(`/tasks/${taskId}`);
-      toast.success("Task deleted successfully");
+      await api.delete(`/tasks/${taskToDelete.id}`);
+      toast.success("Task moved to trash");
       fetchTasks();
     } catch (error) {
       toast.error("Failed to delete task");
+    } finally {
+      setDeleteDialogOpen(false);
+      setTaskToDelete(null);
     }
   };
 
@@ -224,7 +244,7 @@ export default function Tasks() {
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(task)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(task.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(task)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -254,6 +274,30 @@ export default function Tasks() {
           </Card>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will move the task "{taskToDelete?.title}" to the trash. 
+              You can restore it later from the Trash page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTaskToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Move to Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

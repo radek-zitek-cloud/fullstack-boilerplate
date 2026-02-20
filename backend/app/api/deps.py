@@ -25,14 +25,14 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Extract and validate the current user from JWT token.
-    
+
     Args:
         credentials: HTTP Bearer token from Authorization header
         db: Database session for user lookup
-        
+
     Returns:
         Dictionary containing user id, email, is_admin, and is_active
-        
+
     Raises:
         HTTPException: 401 if token is missing, invalid, or user not found
     """
@@ -69,16 +69,19 @@ async def get_current_user(
         )
 
     # Query database to get full user info including is_admin and is_active
-    result = await db.execute(select(User).where(User.id == int(user_id)))
+    # Exclude soft-deleted users
+    result = await db.execute(
+        select(User).where(User.id == int(user_id), User.deleted_at.is_(None))
+    )
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return {
         "id": user.id,
         "email": user.email,

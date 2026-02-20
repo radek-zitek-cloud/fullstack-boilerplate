@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, CheckSquare, LogOut, User, Settings } from "lucide-react";
+import { LayoutDashboard, CheckSquare, LogOut, User, Settings, Shield, ClipboardList, Trash2 } from "lucide-react";
 import StatusBar from "./StatusBar";
 
 export default function Layout() {
@@ -18,6 +18,12 @@ export default function Layout() {
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Tasks", href: "/tasks", icon: CheckSquare },
+    ...(user?.is_admin
+      ? [
+          { name: "Audit Logs", href: "/audit-logs", icon: ClipboardList },
+          { name: "Trash", href: "/trash", icon: Trash2 },
+        ]
+      : []),
   ];
 
 
@@ -57,8 +63,16 @@ export default function Layout() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <div className="px-2 py-1.5 text-sm font-medium text-foreground">
-                    {user?.email}
+                  <div className="px-2 py-1.5">
+                    <div className="text-sm font-medium text-foreground">
+                      {user?.email}
+                    </div>
+                    {user?.is_admin && (
+                      <div className="text-xs text-muted-foreground flex items-center mt-1">
+                        <Shield className="w-3 h-3 mr-1" />
+                        Administrator
+                      </div>
+                    )}
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -73,6 +87,22 @@ export default function Layout() {
                       Settings
                     </Link>
                   </DropdownMenuItem>
+                  {user?.is_admin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/audit-logs" className="cursor-pointer">
+                          <ClipboardList className="w-4 h-4 mr-2" />
+                          Audit Logs
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/trash" className="cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Trash
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />

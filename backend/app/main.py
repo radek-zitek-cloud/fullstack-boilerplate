@@ -11,10 +11,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.api_v1.api import api_router
 from app.core.config import get_settings
 from app.core.logging import get_access_logger, get_logger, setup_logging
+from app.core.migrations import check_and_migrate
 
 # Rate limiter setup
 # Use memory storage for simplicity (can be changed to Redis in production)
 from limits.storage import MemoryStorage
+
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="memory://",
@@ -27,22 +29,22 @@ access_logger = get_access_logger()
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
-    
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
+
         # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-        
+
         # Prevent clickjacking
         response.headers["X-Frame-Options"] = "DENY"
-        
+
         # XSS Protection
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        
+
         # Referrer Policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
+
         # Content Security Policy (basic) - Skip for docs/redoc to allow Swagger UI
         if not request.url.path.startswith(("/docs", "/redoc", "/openapi.json")):
             response.headers["Content-Security-Policy"] = (
@@ -53,7 +55,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "font-src 'self'; "
                 "connect-src 'self';"
             )
-        
+
         # Permissions Policy
         response.headers["Permissions-Policy"] = (
             "accelerometer=(), "
@@ -65,7 +67,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "payment=(), "
             "usb=()"
         )
-        
+
         return response
 
 
@@ -74,11 +76,14 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     logger.info("Application starting up", extra={"version": "0.2.0"})
-    
+
     # Validate production settings
     if settings.SECRET_KEY == "your-secret-key-change-in-production":
         logger.warning("Using default SECRET_KEY - change for production!")
-    
+
+    # Check and run database migrations
+    await check_and_migrate()
+
     yield
     # Shutdown
     logger.info("Application shutting down")
