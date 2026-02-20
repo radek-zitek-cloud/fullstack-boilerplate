@@ -5,11 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_db
+from app.core.permissions import check_resource_permission
 from app.models.audit_log import AuditAction
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.audit import create_audit_log, log_model_change
+from app.services.rbac import check_permission, get_all_subordinate_ids, get_user_permissions
 
 router = APIRouter(
     tags=["tasks"],
@@ -21,11 +23,7 @@ router = APIRouter(
     "/",
     response_model=List[TaskResponse],
     summary="List tasks",
-    description="Get a paginated list of tasks for the current user.",
-    responses={
-        200: {"description": "List of tasks", "model": List[TaskResponse]},
-        401: {"description": "Not authenticated"},
-    },
+    description="Get a paginated list of tasks based on user's permissions.",
 )
 async def get_tasks(
     skip: int = 0,
@@ -33,29 +31,34 @@ async def get_tasks(
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Get paginated list of tasks for current user.
+    """Get paginated list of tasks based on permissions."""
+    # Check read permission
+    perms = await get_user_permissions(db, current_user["id"], "tasks")
+    read_scope = perms.get("read")
 
-    Retrieves tasks belonging to the authenticated user with pagination support.
-    Tasks are sorted by creation date (newest first).
+    if read_scope is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to read tasks",
+        )
 
-    Args:
-        skip: Number of tasks to skip (for pagination)
-        limit: Maximum number of tasks to return (default: 100, max: 1000)
-        current_user: Current authenticated user from JWT token
-        db: Database session
+    # Build query based on scope
+    if read_scope == "all":
+        query = select(Task).where(Task.deleted_at.is_(None))
+    elif read_scope == "subordinates":
+        subordinate_ids = await get_all_subordinate_ids(db, current_user["id"])
+        subordinate_ids.append(current_user["id"])
+        query = select(Task).where(
+            Task.user_id.in_(subordinate_ids),
+            Task.deleted_at.is_(None)
+        )
+    else:  # "own"
+        query = select(Task).where(
+            Task.user_id == current_user["id"],
+            Task.deleted_at.is_(None)
+        )
 
-    Returns:
-        List of TaskResponse objects
-
-    Raises:
-        HTTPException: 401 if not authenticated
-    """
-    result = await db.execute(
-        select(Task)
-        .where(Task.user_id == current_user["id"], Task.deleted_at.is_(None))
-        .offset(skip)
-        .limit(limit)
-    )
+    result = await db.execute(query.offset(skip).limit(limit))
     tasks = result.scalars().all()
     return tasks
 
@@ -64,13 +67,6 @@ async def get_tasks(
     "/",
     response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create task",
-    description="Create a new task for the current user.",
-    responses={
-        201: {"description": "Task created successfully", "model": TaskResponse},
-        401: {"description": "Not authenticated"},
-        422: {"description": "Validation error"},
-    },
 )
 async def create_task(
     task_data: TaskCreate,
@@ -78,30 +74,22 @@ async def create_task(
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Create a new task.
+    """Create a new task."""
+    # Check create permission
+    can_create = await check_permission(
+        db, current_user["id"], "tasks", "create"
+    )
+    if not can_create:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to create tasks",
+        )
 
-    Creates a new task belonging to the authenticated user.
-    Tasks can have a title, description, and completion status.
-
-    Args:
-        task_data: Task creation data (title, description, completed)
-        request: FastAPI request object
-        current_user: Current authenticated user from JWT token
-        db: Database session
-
-    Returns:
-        TaskResponse with created task data
-
-    Raises:
-        HTTPException: 401 if not authenticated
-        HTTPException: 422 if validation fails
-    """
     task = Task(**task_data.model_dump(), user_id=current_user["id"])
     db.add(task)
     await db.commit()
     await db.refresh(task)
 
-    # Log task creation
     await log_model_change(
         db=db,
         action=AuditAction.CREATE,
@@ -115,43 +103,15 @@ async def create_task(
     return task
 
 
-@router.get(
-    "/{task_id}",
-    response_model=TaskResponse,
-    summary="Get task",
-    description="Get a specific task by ID. Users can only access their own tasks.",
-    responses={
-        200: {"description": "Task found", "model": TaskResponse},
-        401: {"description": "Not authenticated"},
-        404: {"description": "Task not found"},
-    },
-)
+@router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: int,
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Get task by ID.
-
-    Retrieves a specific task by its ID. Users can only access tasks
-    that belong to them.
-
-    Args:
-        task_id: ID of the task to retrieve
-        current_user: Current authenticated user from JWT token
-        db: Database session
-
-    Returns:
-        TaskResponse with task data
-
-    Raises:
-        HTTPException: 401 if not authenticated
-        HTTPException: 404 if task not found or doesn't belong to user
-    """
+    """Get task by ID."""
     result = await db.execute(
-        select(Task).where(
-            Task.id == task_id, Task.user_id == current_user["id"], Task.deleted_at.is_(None)
-        )
+        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
 
@@ -161,21 +121,20 @@ async def get_task(
             detail="Task not found",
         )
 
+    # Check permission for this specific task
+    can_read = await check_resource_permission(
+        db, current_user["id"], "tasks", "read", task.user_id
+    )
+    if not can_read:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to read this task",
+        )
+
     return task
 
 
-@router.put(
-    "/{task_id}",
-    response_model=TaskResponse,
-    summary="Update task",
-    description="Update a specific task. Only provided fields are updated. Users can only update their own tasks.",
-    responses={
-        200: {"description": "Task updated successfully", "model": TaskResponse},
-        401: {"description": "Not authenticated"},
-        404: {"description": "Task not found"},
-        422: {"description": "Validation error"},
-    },
-)
+@router.put("/{task_id}", response_model=TaskResponse)
 async def update_task(
     task_id: int,
     task_data: TaskUpdate,
@@ -183,30 +142,9 @@ async def update_task(
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Update task by ID.
-
-    Updates a specific task. Only provided fields are updated (partial update).
-    Users can only update tasks that belong to them.
-
-    Args:
-        task_id: ID of the task to update
-        task_data: Task update data (only include fields to update)
-        request: FastAPI request object
-        current_user: Current authenticated user from JWT token
-        db: Database session
-
-    Returns:
-        TaskResponse with updated task data
-
-    Raises:
-        HTTPException: 401 if not authenticated
-        HTTPException: 404 if task not found
-        HTTPException: 422 if validation fails
-    """
+    """Update task by ID."""
     result = await db.execute(
-        select(Task).where(
-            Task.id == task_id, Task.user_id == current_user["id"], Task.deleted_at.is_(None)
-        )
+        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
 
@@ -216,7 +154,16 @@ async def update_task(
             detail="Task not found",
         )
 
-    # Capture old values before update
+    # Check permission for this specific task
+    can_update = await check_resource_permission(
+        db, current_user["id"], "tasks", "update", task.user_id
+    )
+    if not can_update:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to update this task",
+        )
+
     old_values = {
         "title": task.title,
         "description": task.description,
@@ -231,7 +178,6 @@ async def update_task(
     await db.commit()
     await db.refresh(task)
 
-    # Log task update
     await log_model_change(
         db=db,
         action=AuditAction.UPDATE,
@@ -246,42 +192,16 @@ async def update_task(
     return task
 
 
-@router.delete(
-    "/{task_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete task",
-    description="Delete a specific task. Users can only delete their own tasks.",
-    responses={
-        204: {"description": "Task deleted successfully"},
-        401: {"description": "Not authenticated"},
-        404: {"description": "Task not found"},
-    },
-)
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: int,
     request: Request,
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Delete task by ID.
-
-    Soft deletes a specific task (moves to trash). Users can only delete tasks
-    that belong to them. Deleted tasks can be restored by an admin from the trash.
-
-    Args:
-        task_id: ID of the task to delete
-        request: FastAPI request object
-        current_user: Current authenticated user from JWT token
-        db: Database session
-
-    Raises:
-        HTTPException: 401 if not authenticated
-        HTTPException: 404 if task not found
-    """
+    """Delete task by ID."""
     result = await db.execute(
-        select(Task).where(
-            Task.id == task_id, Task.user_id == current_user["id"], Task.deleted_at.is_(None)
-        )
+        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
 
@@ -291,7 +211,16 @@ async def delete_task(
             detail="Task not found",
         )
 
-    # Capture values before deletion
+    # Check permission for this specific task
+    can_delete = await check_resource_permission(
+        db, current_user["id"], "tasks", "delete", task.user_id
+    )
+    if not can_delete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to delete this task",
+        )
+
     old_values = {
         "title": task.title,
         "description": task.description,
@@ -299,7 +228,6 @@ async def delete_task(
         "priority": task.priority.value,
     }
 
-    # Log before deletion
     await create_audit_log(
         db=db,
         action=AuditAction.DELETE,
@@ -312,6 +240,5 @@ async def delete_task(
         description=f"Deleted task: {task.title}",
     )
 
-    # Soft delete instead of hard delete
     task.soft_delete()
     await db.commit()

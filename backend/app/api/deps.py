@@ -68,11 +68,19 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Validate user_id is an integer (not UUID or other format)
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Query database to get full user info including is_admin and is_active
     # Exclude soft-deleted users
-    result = await db.execute(
-        select(User).where(User.id == int(user_id), User.deleted_at.is_(None))
-    )
+    result = await db.execute(select(User).where(User.id == user_id_int, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
 
     if not user:
