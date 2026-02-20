@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermission } from "@/hooks/usePermission";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,25 +9,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, CheckSquare, LogOut, User, Settings, Shield, ClipboardList, Trash2 } from "lucide-react";
+import { LayoutDashboard, CheckSquare, LogOut, User, Settings, Shield, ClipboardList, Trash2, KeyRound, ShieldCheck, Users, Network } from "lucide-react";
 import StatusBar from "./StatusBar";
+
+function Navigation() {
+  const location = useLocation();
+  const { can: canAccessTasks } = usePermission("tasks");
+
+  const hasTasksAccess = canAccessTasks("read") || canAccessTasks("create") || 
+                         canAccessTasks("update") || canAccessTasks("delete");
+
+  return (
+    <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+      <Link
+        to="/"
+        className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+          location.pathname === "/"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+        }`}
+      >
+        <LayoutDashboard className="w-4 h-4 mr-2" />
+        Dashboard
+      </Link>
+      {hasTasksAccess && (
+        <Link
+          to="/tasks"
+          className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+            location.pathname === "/tasks"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+          }`}
+        >
+          <CheckSquare className="w-4 h-4 mr-2" />
+          Tasks
+        </Link>
+      )}
+    </div>
+  );
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
-
-  const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Tasks", href: "/tasks", icon: CheckSquare },
-    ...(user?.is_admin
-      ? [
-          { name: "Audit Logs", href: "/audit-logs", icon: ClipboardList },
-          { name: "Trash", href: "/trash", icon: Trash2 },
-        ]
-      : []),
-  ];
-
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,22 +61,7 @@ export default function Layout() {
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-xl font-bold text-foreground">Boilerplate</span>
               </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      location.pathname === item.href
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
+              <Navigation />
             </div>
             <div className="flex items-center">
               <DropdownMenu>
@@ -99,6 +108,30 @@ export default function Layout() {
                         <Link to="/trash" className="cursor-pointer">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Trash
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/rbac" className="cursor-pointer">
+                          <KeyRound className="w-4 h-4 mr-2" />
+                          RBAC Management
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="pl-8">
+                        <Link to="/admin/roles" className="cursor-pointer">
+                          <ShieldCheck className="w-4 h-4 mr-2" />
+                          Roles
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="pl-8">
+                        <Link to="/admin/user-roles" className="cursor-pointer">
+                          <Users className="w-4 h-4 mr-2" />
+                          Users
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="pl-8">
+                        <Link to="/admin/hierarchy" className="cursor-pointer">
+                          <Network className="w-4 h-4 mr-2" />
+                          Hierarchy
                         </Link>
                       </DropdownMenuItem>
                     </>

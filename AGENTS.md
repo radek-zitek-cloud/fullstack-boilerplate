@@ -190,3 +190,119 @@ The backend automatically checks and runs Alembic migrations on startup:
 AUTO_MIGRATE=true   # Enable automatic migrations on startup
 ENVIRONMENT=development  # development, staging, production
 ```
+
+## RBAC (Role-Based Access Control)
+
+The system implements a comprehensive RBAC system with hierarchical permissions and component-scoped roles.
+
+### Architecture
+
+**Key Features:**
+- **Component-scoped roles**: Each role belongs to a specific component (e.g., "tasks", "users")
+- **Hierarchical permissions**: Users can have managers/subordinates forming a tree
+- **Permission union**: Multiple roles per user with union of permissions
+- **Four permission levels**:
+  - `"own"` - Only own resources
+  - `"subordinates"` - Own + subordinates' resources
+  - `"all"` - All resources in component
+  - `null` - No access
+
+### Backend Implementation
+
+**Models:**
+- `app/models/role.py` - Role definition with permissions JSON
+- `app/models/user_role.py` - User-role assignments
+- `app/models/user.py` - Extended with manager_id and subordinates
+
+**Core Services:**
+- `app/services/rbac.py` - `check_permission()`, `get_user_permissions()`, `is_in_hierarchy()`
+
+**API Endpoints** (Admin only):
+- `GET /api/v1/admin/rbac/roles` - List all roles
+- `POST /api/v1/admin/rbac/roles` - Create role
+- `PUT /api/v1/admin/rbac/roles/{id}` - Update role
+- `DELETE /api/v1/admin/rbac/roles/{id}` - Delete role
+- `GET /api/v1/admin/rbac/users/{id}/roles` - Get user's roles
+- `POST /api/v1/admin/rbac/users/{id}/roles` - Assign role to user
+- `DELETE /api/v1/admin/rbac/users/{id}/roles/{role_id}` - Remove role from user
+- `PUT /api/v1/admin/rbac/users/{id}/manager` - Set user's manager
+- `GET /api/v1/admin/rbac/hierarchy/{id}` - View user hierarchy
+- `GET /api/v1/admin/rbac/users` - List all users with roles
+
+**Checking Permissions in Endpoints:**
+```python
+from app.core.permissions import require_permission
+from app.services.rbac import check_permission
+
+# Using dependency (returns 403 if no access)
+@router.post("/tasks")
+async def create_task(
+    current_user = Depends(require_permission("tasks", "create")),
+    # ...
+):
+    pass
+
+# Manual check with ownership
+async def update_task(
+    task_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    task = await get_task(db, task_id)
+    has_access = await check_permission(
+        db, current_user.id, "tasks", "update", task.user_id
+    )
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+```
+
+**Default Roles:**
+Run `uv run python scripts/seed_roles.py` to create default roles:
+- `tasks:user` - CRUD on own tasks
+- `tasks:manager` - CRUD on own + subordinates' tasks
+- `tasks:admin` - Full CRUD on all tasks
+
+### Frontend Implementation
+
+**Hooks:**
+- `src/hooks/usePermission.ts` - Check permissions in components
+
+**Components:**
+- `src/components/PermissionGuard.tsx` - Conditional rendering based on permissions
+
+**Usage:**
+```typescript
+import { usePermission } from "@/hooks/usePermission";
+import { PermissionGuard } from "@/components/PermissionGuard";
+
+// Hook usage
+function TaskList() {
+  const { canCreate, canUpdate } = usePermission("tasks");
+  // canCreate, canRead, canUpdate, canDelete are booleans
+}
+
+// Component usage
+function TaskActions({ task }) {
+  return (
+    <PermissionGuard component="tasks" action="delete" resourceOwnerId={task.user_id}>
+      <Button onClick={deleteTask}>Delete</Button>
+    </PermissionGuard>
+  );
+}
+```
+
+**Admin Pages:**
+- `/admin/rbac/roles` - Role management (CRUD)
+- `/admin/rbac/users` - User-role assignment
+- Both accessible from User menu (admin only)
+
+### Adding RBAC to New Components
+
+1. **Backend:**
+   - Add component name to RBAC checks
+   - Define roles with permissions in seed script
+   - Use `require_permission()` dependency or `check_permission()` service
+
+2. **Frontend:**
+   - Use `usePermission()` hook to check access
+   - Wrap UI elements in `<PermissionGuard>` for conditional rendering
