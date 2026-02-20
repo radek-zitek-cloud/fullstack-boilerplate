@@ -14,6 +14,10 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import AuditLogs from "@/pages/AuditLogs";
 import Trash from "@/pages/Trash";
+import AdminRBAC from "@/pages/AdminRBAC";
+import RolesManagement from "@/pages/RolesManagement";
+import UserRolesManagement from "@/pages/UserRolesManagement";
+import UserHierarchyManagement from "@/pages/UserHierarchyManagement";
 import Layout from "@/components/Layout";
 
 import { Loader2 } from "lucide-react";
@@ -61,6 +65,10 @@ function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="trash" element={<Trash />} />
+                <Route path="admin/rbac" element={<AdminRBAC />} />
+                <Route path="admin/roles" element={<RolesManagement />} />
+                <Route path="admin/user-roles" element={<UserRolesManagement />} />
+                <Route path="admin/hierarchy" element={<UserHierarchyManagement />} />
               </Route>
             </Routes>
             <Toaster />
